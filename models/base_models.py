@@ -25,22 +25,6 @@ def get_model(name):
     assert name in all_models
     model, preprocess = clip.load(name, jit=False)
     model = model.visual
-    for n, m in model.named_modules():
-        print(n)
-    # CLIP doesn't have nn.Module for projection head,
-    # adding one to be compatible with BrainScore and
-    # set the model.proj to the weights
-    if name == 'ViT-B/32':
-        feature_dim = 768
-    elif name == 'RN50':
-        feature_dim = 2048
-        
-    proj_weights = model.proj    
-    model.ln_proj = torch.nn.Linear(feature_dim, model.output_dim)
-    model.ln_proj.weights = proj_weights
-    model.ln_proj.bias = torch.nn.Parameter(torch.zeros(model.output_dim))
-    # add a ImageNet prediction head
-    model.ln_pred = torch.nn.Linear(model.output_dim, 1000)
     # cast all weights from HalfTensors to FloatTensor    
     model.to(torch.float32, non_blocking=False)
     preprocessing = functools.partial(load_preprocess_images, image_size=224)
@@ -68,6 +52,3 @@ def get_bibtex(model_identifier):
 
 if __name__ == '__main__':
     check_models.check_base_models(__name__)
-    #name = 'ViT-B/32'
-    #name = 'RN50'
-    #get_model(name)
