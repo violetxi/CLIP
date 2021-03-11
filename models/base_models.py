@@ -3,14 +3,15 @@ import sys
 import functools
 sys.path.append('../clip/')
 import torch
-from clip import clip
+import clip
 from model_tools.activations.pytorch import PytorchWrapper
 from model_tools.activations.pytorch import load_preprocess_images
 from model_tools.check_submission import check_models
 
 
 all_models = ['ViT-B/32', 'RN50']
-CLIP_RN50_LAYERS = ['layer1.0.relu', 'layer1.1.relu', 'layer1.2.relu'] +\
+CLIP_RN50_LAYERS = ['conv1', 'conv2', 'conv3'] +\
+                   ['layer1.0.relu', 'layer1.1.relu', 'layer1.2.relu'] +\
                   ['layer2.0.relu', 'layer2.1.relu', 'layer2.2.relu',
                    'layer2.3.relu'] +\
                    ['layer3.0.relu',  'layer3.1.relu', 'layer3.2.relu',
@@ -24,11 +25,11 @@ def get_model_list():
 def get_model(name):
     assert name in all_models
     model, preprocess = clip.load(name, jit=False)
-    model = model.visual
+    model = model.visual    
     # cast all weights from HalfTensors to FloatTensor    
     model.to(torch.float32, non_blocking=False)
     preprocessing = functools.partial(load_preprocess_images, image_size=224)
-    wrapper = PytorchWrapper(identifier='clip', model=model, preprocessing=preprocessing)
+    wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
     wrapper.image_size = 224
     return wrapper
 
@@ -36,7 +37,7 @@ def get_layers(name):
     assert name in all_models
     if name == 'ViT-B/32':
         num_layers = 12
-        layers = [f'transformer.resblocks.{i}.ln_2' for i in range(num_layers)]
+        layers = [f'transformer.resblocks.{i}.ln_2_reshape' for i in range(num_layers)]
     elif name == 'RN50':
         layers = CLIP_RN50_LAYERS
     return layers

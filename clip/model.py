@@ -162,6 +162,13 @@ class QuickGELU(nn.Module):
     def forward(self, x: torch.Tensor):
         return x * torch.sigmoid(1.702 * x)
 
+class ReshapeLayer(nn.Module):
+    def __init__(self, *args):        
+        super(ReshapeLayer, self).__init__()
+
+    def forward(self, x):
+        return x.permute(1, 0, 2)
+
 
 class ResidualAttentionBlock(nn.Module):
     def __init__(self, d_model: int, n_head: int, attn_mask: torch.Tensor = None):
@@ -175,6 +182,7 @@ class ResidualAttentionBlock(nn.Module):
             ("c_proj", nn.Linear(d_model * 4, d_model))
         ]))
         self.ln_2 = LayerNorm(d_model)
+        self.ln_2_reshape = ReshapeLayer()    # reshape it (batch, n_blocks, n_embds)
         self.attn_mask = attn_mask
 
     def attention(self, x: torch.Tensor):
@@ -184,6 +192,7 @@ class ResidualAttentionBlock(nn.Module):
     def forward(self, x: torch.Tensor):
         x = x + self.attention(self.ln_1(x))
         x = x + self.mlp(self.ln_2(x))
+        y = self.ln_2_reshape(x)
         return x
 
 
@@ -226,7 +235,7 @@ class VisualTransformer(nn.Module):
         x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.transformer(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
-
+        
         x = self.ln_post(x[:, 0, :])
 
         if self.proj is not None:
